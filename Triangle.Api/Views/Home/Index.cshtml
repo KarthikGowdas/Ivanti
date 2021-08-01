@@ -1,0 +1,203 @@
+﻿<div class="jumbotron">
+    <h1>Triangle API</h1>
+    <p class="lead">Use the below input controls to generate triangle</p>
+
+</div>
+<h2>Inputs to generate triangle</h2>
+
+<div class="row">
+    <div class="col-md-4">
+
+
+        <div class="row">
+            <div id="generateTriangleByLabel" class="form-row">
+                <div class="form-group col-md-6">
+                    <label for="labelDropDown">Triangle Label</label>
+                    <select id="labelDropDown" class="form-control" onchange="fetchTriangleByLabel()">
+                        <option value="-1">Select a triangle</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div id="generateTriangleVertex" class="form-row">
+                <div class="form-group col-md-8">
+                    <label for="x0">X0</label>
+                    <input id="x0" type="text" class="form-control" name="X" />
+                    <label for="yo">Y0</label>
+                    <input id="y0" type="text" class="form-control" name="Y" />
+                </div>
+                <div class="form-group col-md-8">
+                    <label for="x1">X1</label>
+                    <input id="x1" type="text" class="form-control" name="X" />
+                    <label for="y1">Y1</label>
+                    <input id="y1" type="text" class="form-control" name="Y" />
+                </div>
+                <div class="form-group col-md-8">
+                    <label for="x2">X2</label>
+                    <input id="x2" type="text" class="form-control" name="X" />
+                    <label for="y2">Y2</label>
+                    <input id="y2" type="text" class="form-control" name="Y" />
+                </div>
+                <div class="form-group col-md-12">
+                    <button id="submitBtn" onclick="fetchTriangleByVertex()" class="btn btn-primary">Submit Vertices</button>
+                    <button id="clearBtn" onclick="clearFields()" class="btn btn-danger">Clear</button>
+                </div>
+            </div>
+
+
+        </div>
+
+    </div>
+    <div class="col-md-8" style="border:1px solid black; height:500px">
+        <canvas id="TriangleCanvas" width="700" height="500">
+        </canvas>
+    </div>
+</div>
+<div class="container d-flex justify-content-center mt-4">
+    <div class="row">
+        <div class="col-md-8 card p-3 mt-3">
+            <div class="border p-2 rounded d-flex flex-row align-items-center">
+                <div class="p-1 px-4 d-flex flex-column align-items-center score rounded"> <span class="d-block char text-success" id="triangleLabel"></span> </div>
+                <div class="ml-2 p-3" id="triangleVertexDetails">
+                    <p id="vertex-0"></p>
+                    <p id="vertex-1"></p>
+                    <p id="vertex-2"></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+@section scripts
+{
+    <script type="text/javascript">
+
+        const baseUrl = window.location.origin;
+
+        var fetchTriangleByLabel = function () {
+
+            let selectedValue = $("#labelDropDown").val();
+            $.ajax({
+                url: `${baseUrl}/api/GetTriangleByLabel`,
+                method: "GET",
+                data: `Lable=${selectedValue}`,
+                success: function (response) {
+                    drawTriangle(response);
+                    setTriangleDetails(response);
+                }
+            });
+
+        }
+
+
+        var fetchTriangleByVertex = function () {
+
+
+            let request = [];
+            let isValid = true;
+            $("#generateTriangleVertex").find(".form-group").each(function () {
+
+                let inputGroup = $(this).find("input");
+                if (inputGroup != null) {
+                    let obj = {};
+                    inputGroup.each(function () {
+                        obj[this.name] = parseInt(this.value);
+                    });
+                    if (!$.isEmptyObject(obj))
+                        request.push(obj);
+                }
+
+            });
+
+            if (!isValid)
+                return;
+
+            $.ajax({
+                url: `${baseUrl}/api/GetTriangleByVertices`,
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                data: JSON.stringify(request),
+                processData: false,
+                success: function (response) {
+                    drawTriangle(response);
+                    setTriangleDetails(response);
+                },
+                error: function (XHR, text, errorThrown) {
+                    console.log(XHR, text, errorThrown);
+                    toastr.error("Triangle with the vertex not found", "Error");
+                }
+            });
+
+        }
+
+        var setTriangleDetails = function (triangle) {
+            $("#triangleLabel").text(triangle.Label);
+            $.each(triangle.Vertices, function (i, v) {
+
+                $(`#vertex-${i}`).text(`X${i} = ${v.X} Y${i} = ${v.Y}`);
+
+            });
+        }
+
+        var clearFields = function() {
+
+            $("#labelDropDown").val(-1);
+            $("#triangleLabel").text("");
+            $("#triangleVertexDetails").find('p').each(function (i, v) {
+                $(`#vertex-${i}`).text(``);
+            });
+            $("#generateTriangleVertex").find(".form-group").each(function () {
+
+                let inputGroup = $(this).find("input");
+                if (inputGroup != null) {
+                    inputGroup.each(function () {
+                        $(`#${this.id}`).val('');
+                    });
+                }
+
+            });
+            let canvas = document.querySelector("#TriangleCanvas");
+            let context = canvas.getContext("2d");
+            context.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+
+        var drawTriangle = function (triangle) {
+            let canvas = document.querySelector("#TriangleCanvas");
+            let context = canvas.getContext("2d");
+            console.log(triangle);
+            context.strokeStyle = '#C8C8C8';
+            context.beginPath();
+           // console.log(canvas.width, canvas.height);
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            $.each(triangle.Vertices, function (i, v) {
+                context.lineTo((v.X * 69), (v.Y * 69));
+
+            });
+            context.closePath();
+            context.lineWidth = 5;
+            context.stroke();
+            context.fillStyle = "#5B9BD5";
+            context.fill();
+        }
+
+        $(document).ready(function () {
+
+            $.ajax({
+                url: `${baseUrl}/api/GetAllTrianglesVertex`,
+                async: true,
+                method: "GET",
+                success: function (response) {
+                    $.each(response, function (key, value) {
+                        $("#labelDropDown").append(`<option value='${value.Label}'>${value.Label}</option>`)
+                       /* drawTriangle(value);*/
+                    });
+                }
+            });
+
+
+        });
+
+    </script>
+}
